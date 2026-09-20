@@ -1,0 +1,21 @@
+{
+  "name": "@rps/server",
+  "version": "1.0.0",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^26.6.2"
+  },
+  "peerDependencies": {
+    "@rps/shared": "workspace:*",
+    "typescript": "^7"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.3"
+  }
+}

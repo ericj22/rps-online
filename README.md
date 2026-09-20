@@ -1,2 +1,2 @@
 # rps-online
-Rock Paper Scissors - But online
+Rock Paper Scissors - but online

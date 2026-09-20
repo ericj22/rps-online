@@ -1,0 +1,13 @@
+{
+  "name": "rps-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:server": "bun --filter @rps/server dev",
+    "dev:client": "bun --filter @rps/client dev",
+    "dev": "bun --filter \"*\" dev"
+  }
+}
