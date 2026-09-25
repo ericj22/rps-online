@@ -6,8 +6,8 @@ export interface SocketData {
 }
 
 export interface ClientToServerEvents {
-  readyUp: (data: { playerId: string, name: string }) => void;
-  submitMove: (data: { playerId: string, move: Move }) => void;
+  readyUp: (data: { name: string }) => void;
+  submitMove: (data: { move: Move }) => void;
   replay: () => void;
 }
 
