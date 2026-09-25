@@ -26,7 +26,14 @@ const httpServer = createServer((req, res) => {
       idToRole: new Map<string, number>,
       players: [],
       status: "SETTING_UP",
-    })
+    });
+
+    setTimeout(() => {
+      const game = games.get(roomId);
+      if (game && game.players.length === 0) {
+        games.delete(roomId);
+      }
+    }, 60_000);
 
     res.writeHead(201, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ roomId }));
@@ -74,7 +81,7 @@ io.on('connection', (socket) => {
   const roomId = socket.data.roomId!;
   const game = games.get(roomId);
 
-  if (!game) {
+  if (!game || game.players.length >= 2) {
     socket.disconnect();
     return;
   }
@@ -208,6 +215,8 @@ io.on('connection', (socket) => {
       if (otherPlayer) {
         activeGame.idToRole.set(otherPlayer?.id, 0);
         otherPlayer.role = 0;
+        otherPlayer.ready = false;
+        otherPlayer.move = undefined;
       }
     }
   });
