@@ -23,10 +23,9 @@ const httpServer = createServer((req, res) => {
 
     games.set(roomId, {
       id: roomId,
-      players: new Map<string, Player>,
+      idToRole: new Map<string, number>,
+      players: [],
       status: "SETTING_UP",
-      player1: "",
-      player2: "",
     })
 
     res.writeHead(201, { "Content-Type": "application/json" });
@@ -62,7 +61,7 @@ io.use((socket, next) => {
     return next(new Error("Game room doesn't exist"));
   }
 
-  if (game.players.size >= 2) {
+  if (game.players.length >= 2) {
     return next(new Error("Game room is full"));
   }
 
@@ -81,20 +80,17 @@ io.on('connection', (socket) => {
   }
 
   socket.join(roomId);
-  game.players.set(socket.id, {
+  game.players.push({
     id: socket.id,
     name: "", // randomly generate name?
-    role: game.players.size === 0 ? "player1" : "player2",
+    role: game.players.length,
     ready: false,
     score: 0,
   });
 
-  if (game.players.size === 1) {
-    game.player1 = socket.id;
-  }
+  game.idToRole.set(socket.id, game.players.length-1);
 
-  if (game.players.size === 2) {
-    game.player2 = socket.id;
+  if (game.players.length === 2) {
     game.status = "SETTING_UP";
     io.to(roomId).emit("gameStart");
   }
@@ -107,22 +103,28 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const player = game.players.get(data.playerId);
+    const role = game.idToRole.get(socket.id);
+
+    if (!role) {
+      return;
+    }
+
+    const player = game.players[role];
     if (!player) {
       return;
     }
     player.name = data.name;
     player.ready = true;
 
-    socket.to(roomId).emit("readied", { playerId: data.playerId });
+    io.to(roomId).emit("readied", { playerId: socket.id });
 
-    const p1 = game.players.get(game.player1);
-    const p2 = game.players.get(game.player2);
+    const p1 = game.players[0];
+    const p2 = game.players[1];
     
     // Event back for single ready???
     if (p1 && p2 && p1.ready && p2.ready) {
       game.status = "CHOOSING";
-      socket.to(roomId).emit("allReady");
+      io.to(roomId).emit("allReady");
     }
   });
 
@@ -132,15 +134,20 @@ io.on('connection', (socket) => {
 
     if (!game || game.status !== "CHOOSING") return;
 
-    const player = game.players.get(data.playerId);
+    const role = game.idToRole.get(socket.id);
+    if (!role) {
+      return;
+    }
+
+    const player = game.players[role];
 
     if (!player) {
       return;
     }
     player.move = data.move;
 
-    const p1 = game.players.get(game.player1);
-    const p2 = game.players.get(game.player2);
+    const p1 = game.players[0];
+    const p2 = game.players[1];
 
     if (p1 && p2 && p1.move && p2.move) {
       // Calculate result
@@ -148,7 +155,7 @@ io.on('connection', (socket) => {
       if (result === "ERROR" || result === "TIE") {
         p1.move = undefined;
         p2.move = undefined;
-        socket.to(roomId).emit('replayRound');
+        io.to(roomId).emit('replayRound');
       } else {
         game.status = "FINISHED";
         if (result === "PLAYER1_WIN") {
@@ -156,7 +163,7 @@ io.on('connection', (socket) => {
         } else {
           p2.score += 1;
         }
-        socket.to(roomId).emit('roundResolved', { players: game.players, result: result });
+        io.to(roomId).emit('roundResolved', { players: game.players, result: result });
       }
     }
   });
@@ -167,8 +174,8 @@ io.on('connection', (socket) => {
 
     if (!game || game.status !== "FINISHED") return;
 
-    const p1 = game.players.get(game.player1);
-    const p2 = game.players.get(game.player2);
+    const p1 = game.players[0];
+    const p2 = game.players[1];
     
     if (!p1 || !p2) {
       return; // Can't replay if someone disconnected - have to handle this state
@@ -177,28 +184,30 @@ io.on('connection', (socket) => {
     p1.move = undefined;
     p2.move = undefined;
     game.status = "CHOOSING";
-    socket.to(roomId).emit('replayRound');
+    io.to(roomId).emit('replayRound');
   });
 
   socket.on('disconnecting', () => {
     const activeGame = games.get(roomId);
     if (!activeGame) return;
 
-    activeGame.players.delete(socket.id);
+    const targetRole = activeGame.idToRole.get(socket.id);
+    if (!targetRole) return;
+
+    activeGame.players.splice(targetRole, 1);
 
     // Set game state to complete? Forfeit other player?
-    socket.to(roomId).emit("playerLeft", {playerId: socket.id});
+    io.to(roomId).emit("playerLeft", {playerId: socket.id});
 
-    if (activeGame.players.size === 0) {
+    if (activeGame.players.length === 0) {
       games.delete(roomId);
     } else {
-      const otherPlayer = socket.id === activeGame.player1 ? activeGame.player2 : activeGame.player1;
+      const otherPlayer = activeGame.players[0];
       game.status = "SETTING_UP";
       
-      activeGame.player1 = otherPlayer;
-      const player = activeGame.players!.get(otherPlayer);
-      if (player) {
-        player.role = "player1";
+      if (otherPlayer) {
+        activeGame.idToRole.set(otherPlayer?.id, 0);
+        otherPlayer.role = 0;
       }
     }
   });

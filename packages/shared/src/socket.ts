@@ -17,5 +17,5 @@ export interface ServerToClientEvents {
   allReady: () => void;
   playerLeft: (data: { playerId: string }) => void;
   replayRound: () => void;
-  roundResolved: (data: { players: Map<string, Player>, result: GameResult }) => void;
+  roundResolved: (data: { players: Player[], result: GameResult }) => void;
 }
