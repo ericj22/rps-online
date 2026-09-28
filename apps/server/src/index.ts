@@ -1,7 +1,7 @@
-import type { ClientToServerEvents, Game, Player, ServerToClientEvents, SocketData } from '@rps/shared';
+import type { ClientToServerEvents, Game, ServerToClientEvents, SocketData } from '@rps/shared';
+import { randomUUID } from "node:crypto";
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
-import { randomUUID } from "node:crypto";
 import { resolveGame } from './game';
 
 const games = new Map<string, Game>();
@@ -159,19 +159,17 @@ io.on('connection', (socket) => {
     if (p1 && p2 && p1.move && p2.move) {
       // Calculate result
       const result = resolveGame(p1, p2);
-      if (result === "ERROR" || result === "TIE") {
-        p1.move = undefined;
-        p2.move = undefined;
-        io.to(roomId).emit('replayRound');
-      } else {
+      if (result === "PLAYER1_WIN" || result === "PLAYER2_WIN") {
         game.status = "FINISHED";
         if (result === "PLAYER1_WIN") {
           p1.score += 1;
         } else {
           p2.score += 1;
         }
-        io.to(roomId).emit('roundResolved', { players: game.players, result: result });
       }
+      p1.move = undefined;
+      p2.move = undefined;
+      io.to(roomId).emit('roundResolved', { players: game.players, result: result });
     }
   });
 
