@@ -1,4 +1,4 @@
-import type { GameResult, Move, Player } from "./game";
+import type { GameSnapshot, Move, RoundResolution } from "./game";
 
 export interface SocketData {
   roomId?: string;
@@ -8,14 +8,18 @@ export interface SocketData {
 export interface ClientToServerEvents {
   readyUp: (data: { name: string }) => void;
   submitMove: (data: { move: Move }) => void;
-  replay: () => void;
+  requestReplay: () => void;
 }
 
 export interface ServerToClientEvents {
-  gameStart: () => void;
+  error: (data: { message: string }) => void;
+  assignedSlot: (data: { slot: 'player1' | 'player2' }) => void;
+  playerJoined: (data: { snapshot: GameSnapshot }) => void;
+  readyPhaseStarted: () => void;
   readied: (data: { playerId: string }) => void;
   allReady: () => void;
   playerLeft: (data: { playerId: string }) => void;
+  replayRequested: (data: { playerId: string }) => void;  
   replayRound: () => void;
-  roundResolved: (data: { players: Player[], result: GameResult }) => void;
+  roundResolved: (data: { resolution: RoundResolution }) => void;
 }
